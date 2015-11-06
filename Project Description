@@ -1,0 +1,9 @@
+#Project Description
+
+The idea of this project is to create a weather station for individuals.
+
+The original hackathon version will include a temperature and luminosity sensor.
+The weather station will run on the Low Power Network provided by Swisscom.
+
+In an future update we will add a pressure and humidity sensor. 
+When the amount of data is enough, we will be able to make some near future meteo previsions.
