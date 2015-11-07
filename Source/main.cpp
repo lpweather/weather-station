@@ -129,36 +129,54 @@ static uint8_t AppDataSize = APP_DATA_SIZE;
 
 static LoRaMacEvent_t LoRaMacEvents;
 
-static uint8_t temperatureValue = 0;
+static float temperatureValue = 0;
 static float luminanceValue = 0.0;
-static float tempLightValue = 0.0;  
+static float lightValue = 0.0;  
 
 Ticker Led1Timer;
 Ticker Led2Timer;
 Ticker BuzTimer;
 
-#define NUM_LED 3
-
 AnalogIn LightSens(A1);
 AnalogIn TempretureSens(A2);
 AnalogIn LuminanceSens ( A3 );
-//ChainableLED color_led(D6, D7, NUM_LED);
 DigitDisplay display(D6, D7);
-
 
 
 /*!
  *
  */
-static void PrepareTxFrame( uint8_t port )
+static int PrepareTxFrame( uint8_t port, uint8_t sensorIndex )
 {
-    debug("[Tx] Temperature=%d\n\r", temperatureValue);
-    debug("[Tx] Luminance=%f\n\r", luminanceValue);
-    debug("[Tx] Light=%f\n\r", tempLightValue);
-
-    AppData[0] = temperatureValue;
-    AppData[1] = luminanceValue;
-    AppData[2] = tempLightValue;
+    AppData[0] = sensorIndex;
+    float sensorValue;
+    switch (sensorIndex)
+    {
+        case 0:
+            debug("[Tx] Temperature=%f\n\r", temperatureValue);
+            sensorValue = temperatureValue;
+            sensorIndex++;
+            break;
+        case 1:
+            debug("[Tx] Luminance=%f\n\r", luminanceValue);
+            sensorValue = luminanceValue;
+            sensorIndex++;
+            break;
+        case 2:
+            debug("[Tx] Light=%f\n\r", lightValue);
+            sensorValue = lightValue;
+            sensorIndex = 0;
+            break;
+        default:
+            break;
+    }
+    uint32_t value = sensorValue * 10000;
+    for (int i = 4; i > 0; i--)
+    {
+        AppData[i] = value % 100;
+        value /= 100;
+    }
+    return sensorIndex;
 }
 
 static void ProcessRxFrame( LoRaMacEventFlags_t *flags, LoRaMacEventInfo_t *info )
@@ -297,19 +315,21 @@ int main( void )
     
     LoRaMacSetDutyCycleOn( false );    
         
+    int sensorIndex = 0;
+    int displayIndex = 0;
+        
     while( 1 )
     {
+
         // Read light sensor
-        tempLightValue = LightSens.read( ) * 1.65;
+        lightValue = LightSens.read( ) * 1.65;
 
         int a;
         int B = 3975;                                                         //B value of the thermistor
         float resistance;
         a = TempretureSens * 1023;
         resistance =(float)(1023 - a) * 10000 / a;                         //get the resistance of the sensor;
-        temperatureValue = 1 / (log(resistance / 10000) / B + 1 / 298.15) - 273.15;
-        display.write(temperatureValue);
-        
+        temperatureValue = (float)(1 / (log(resistance / 10000) / B + 1 / 298.15) - 273.15);
         luminanceValue = LuminanceSens.read();
 
         while( IsNetworkJoined == false )
@@ -342,6 +362,28 @@ int main( void )
 
         if( TxDone == true )
         {
+
+            display.clear();
+
+            switch(displayIndex)
+            {
+                case 0:
+                    display.write(0, ((int)temperatureValue)/10);
+                    display.write(1, ((int)temperatureValue)%10);
+                    display.writeRaw(2, (int)0x63);
+                    display.writeRaw(3, (int)0x39);
+                    displayIndex++;
+                    break;
+
+                case 1:
+                    display.write(luminanceValue*1000);
+                    displayIndex++;
+                    break;
+                case 2:
+                    display.write(lightValue*1000);
+                    displayIndex = 0;
+                    break;
+            }
             
             TxDone = false;
             
@@ -362,11 +404,11 @@ int main( void )
             
             TxNextPacket = false;
         
-            PrepareTxFrame( AppPort );
+            sensorIndex = PrepareTxFrame( AppPort, sensorIndex );
             
             trySendingFrameAgain = SendFrame( );
         }
-        
+
 //       TimerLowPowerHandler( );
     }
 }

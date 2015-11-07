@@ -40,8 +40,9 @@
 const uint8_t DIGIT_TABLE[] = {0x3f, 0x06, 0x5b, 0x4f,
                               0x66, 0x6d, 0x7d, 0x07,
                               0x7f, 0x6f, 0x77, 0x7c,
-                              0x39, 0x5e, 0x79, 0x71
-                             }; //0~9,A,b,C,d,E,F
+                              0x39, 0x5e, 0x79, 0x71,
+                              0x63
+                             }; //0~9,A,b,C,d,E,F,°
 
 
 inline uint8_t conv(uint8_t n)
